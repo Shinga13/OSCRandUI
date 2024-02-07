@@ -27,19 +27,24 @@ def analyze_shallow(combat:Combat, settings):
         crit_flag, miss_flag, _, kill_flag = get_flags(line.flags)
         if player_attacks:
             if not line.owner_id in player_dict:
-                player_dict[line.owner_id] = PlayerTableRow(line.owner_name,
-                        re_search(HANDLE_REGEX, line.owner_id).group('handle'))
+                player_dict[line.owner_id] = PlayerTableRow(line.owner_name, 
+                        get_handle_from_id(line.owner_id))
             attacker = player_dict[line.owner_id]
         if player_attacked:
             if not line.target_id in player_dict:
                 player_dict[line.target_id] = PlayerTableRow(line.target_name,
-                        re_search(HANDLE_REGEX, line.target_id).group('handle'))
+                        get_handle_from_id(line.target_id))
             target = player_dict[line.target_id]
 
         # get table data
         if miss_flag:
             try:
                 attacker.misses += 1
+            except AttributeError:
+                pass
+        if kill_flag:
+            try:
+                target.deaths += 1
             except AttributeError:
                 pass
         
@@ -71,12 +76,6 @@ def analyze_shallow(combat:Combat, settings):
                     if line.magnitude != 0 and line.magnitude2 != 0:
                         attacker.resistance_sum += line.magnitude / line.magnitude2
                         attacker.hull_attacks += 1
-            except AttributeError:
-                pass
-
-        if kill_flag:
-            try:
-                target.deaths += 1
             except AttributeError:
                 pass
         
@@ -111,13 +110,10 @@ def analyze_shallow(combat:Combat, settings):
         except ZeroDivisionError:
             player.heal_crit_chance = 0.0
 
-        player.graph_time = tuple(map(lambda x: round(x, 2), player.graph_time))
+        player.graph_time = tuple(map(lambda x: round(x, 1), player.graph_time))
         DPS_data = numpy.array(player.DMG_graph_data, dtype=numpy.float64).cumsum()
         player.DPS_graph_data = tuple(DPS_data / player.graph_time)
         
-
-    
-
     combat.table, combat.graph_data = create_overview(player_dict)
 
 def create_overview(player_dict:dict) -> list[list]:
@@ -165,12 +161,14 @@ def create_overview(player_dict:dict) -> list[list]:
     table.sort(key=lambda x: x[0])
     return (table, (graph_time, DPS_graph_data, DMG_graph_data))
 
-
-
 def get_handle_from_id(id_str:str) -> str:
     '''
     returns player handle from is string
     '''
+    handle = re_search(HANDLE_REGEX, id_str)
+    if handle is None:
+        return ''
+    return handle.group('handle')
 
 
 def get_flags(flag_str:str) -> tuple[bool]:

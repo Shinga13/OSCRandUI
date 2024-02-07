@@ -130,17 +130,27 @@ class Combat():
     '''
     Contains a single combat including raw log lines, map and combat information and shallow parse results.
     '''
-    __slots__ = ('log_data', 'map', 'date_time', 'table', 'graph_data')
+    __slots__ = ('log_data', '_map', 'date_time', 'table', 'graph_data')
 
     def __init__(self, log_lines:Optional[list[LogLine]] = None) -> None:
         self.log_data = log_lines
-        self.map = None
+        self._map = None
         self.date_time = None
         self.table = None
         self.graph_data = None
 
+    @property
+    def map(self) -> str:
+        if self._map is None:
+            return 'Combat'
+        return self._map
+    
+    @map.setter
+    def map(self, map_name):
+        self._map = map_name
+
     def __repr__(self) -> str:
-        return f'<{self.__class__.__name__} - Map: {self.map} - Datetime: {self.date_time}'
+        return f'<{self.__class__.__name__} - Map: {self.map} - Datetime: {self.date_time}>'
     
     def __gt__(self, other):
         if not isinstance(other, Combat):
