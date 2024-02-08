@@ -2,9 +2,9 @@ import numpy
 from re import search as re_search
 from datetime import timedelta
 
-from datamodels import Combat, PlayerTableRow
+from .datamodels import Combat, PlayerTableRow
 
-HANDLE_REGEX = '^P\[.+?@.+?(?P<handle>@.+?)\]$'
+HANDLE_REGEX = '^P\\[.+?@.+?(?P<handle>@.+?)\\]$'
 
 def analyze_shallow(combat:Combat, settings):
     '''

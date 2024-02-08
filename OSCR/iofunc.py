@@ -3,7 +3,7 @@ from io import TextIOWrapper
 from re import sub as re_sub
 from datetime import timedelta
 
-from utilities import to_datetime, logline_to_str
+from .utilities import to_datetime, logline_to_str
 
 # currently as constant, will be some kind of import from disk or config file eventually
 MAP_IDENTIFIERS_EXISTENCE = {

@@ -1,13 +1,11 @@
 from datetime import timedelta
 import os
 
-from datamodels import Combat, LogLine
-from iofunc import MAP_IDENTIFIERS_EXISTENCE
-from iofunc import get_combat_log_data, split_log_by_lines, reset_temp_folder
-from utilities import to_datetime, datetime_to_display
-from baseparser import analyze_shallow
-
-from iofunc import save_log
+from .datamodels import Combat, LogLine
+from .iofunc import MAP_IDENTIFIERS_EXISTENCE
+from .iofunc import get_combat_log_data, split_log_by_lines, reset_temp_folder
+from .utilities import to_datetime, datetime_to_display
+from .baseparser import analyze_shallow
 
 
 class OSCR():

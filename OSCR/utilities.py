@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from datamodels import LogLine
+from .datamodels import LogLine
 
 def to_datetime(date_time:str) -> datetime:
     '''
