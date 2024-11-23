@@ -1,6 +1,7 @@
 import os
+import sys
 
-from OSCR import OSCR
+from OSCR import OSCR, TABLE_HEADER
 from PySide6.QtWidgets import QApplication, QWidget, QLineEdit, QFrame, QListWidget, QScrollArea
 from PySide6.QtWidgets import QSpacerItem, QTabWidget, QTableView
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout
@@ -1059,7 +1060,7 @@ class OSCRUI():
         sec_1.addWidget(overview_sort_label, 4, 0, alignment=ARIGHT)
         overview_sort_combo = self.create_combo_box(
                 col_2_frame, style_override={'font': '@small_text'})
-        overview_sort_combo.addItems(get_table_headers())
+        overview_sort_combo.addItems(TABLE_HEADER)
         overview_sort_combo.setCurrentIndex(self.settings.value('overview_sort_column', type=int))
         overview_sort_combo.currentIndexChanged.connect(
                 lambda new_index: self.settings.setValue('overview_sort_column', new_index))

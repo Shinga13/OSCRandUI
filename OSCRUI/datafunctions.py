@@ -3,7 +3,7 @@ from threading import Thread
 
 from OSCR import OSCR
 from OSCR.combat import Combat
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from .callbacks import switch_main_tab, switch_overview_tab, trim_logfile
@@ -30,6 +30,7 @@ class CustomThread(QThread):
         self.result.emit((r,))
 
 
+@Slot()
 def analyze_log_callback(
         self, translate, combat_id=None, path=None, hidden_path=False):
     """
@@ -60,10 +61,10 @@ def analyze_log_callback(
         self.parser.reset_parser()
         self.current_combats.clear()
         self.parser.log_path = path
-        # self.parser.analyze_log_file()
+        self.parser.analyze_log_file(max_combats=1)
         # exec_in_thread(self, self.parser.analyze_log_file_mp)
-        self.thread = Thread(target=self.parser.analyze_log_file)
-        self.thread.start()
+        # self.thread = Thread(target=self.parser.analyze_log_file)
+        # self.thread.start()
 
         # except Exception as ex:
         #     error = QMessageBox()

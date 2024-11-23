@@ -3,7 +3,7 @@ __all__ = [
         'utilities']
 
 TABLE_HEADER = (
-    'Combat Time', 'DPS', 'Total Damage', 'Debuff', 'Attacks-in Share',
+    'DPS', 'Combat Time', 'Combat Time Share', 'Total Damage', 'Debuff', 'Attacks-in Share',
     'Taken Damage Share', 'Damage Share', 'Max One Hit', 'Crit Chance', 'Deaths', 'Total Heals',
     'Heal Share', 'Heal Crit Chance', 'Total Damage Taken', 'Total Hull Damage Taken',
     'Total Shield Damage Taken', 'Total Attacks', 'Hull Attacks', 'Attacks-in Number',

@@ -1,3 +1,4 @@
+import traceback
 from collections.abc import Callable
 from datetime import timedelta
 from multiprocessing import Event, freeze_support, Process, Queue, set_start_method
@@ -127,6 +128,7 @@ class OSCR:
         try:
             with ReadFileBackwards(log_path, offset) as backwards_file:
                 last_log_time = to_datetime(backwards_file.top.split('::')[0])
+                current_combat.end_time = last_log_time
                 for line in backwards_file:
                     if line == '':
                         continue
@@ -159,7 +161,7 @@ class OSCR:
                     combat_handler(current_combat)
                 new_offset = -1
         except Exception:
-            print(line)
+            traceback.print_exc()
             raise Exception('something broke')
         finally:
             pass
@@ -257,11 +259,6 @@ class OSCR:
         queue.put(OSCR._analyze_log_file(
                 log_path, total_combats, first_combat_id, offset, settings,
                 lambda combat: queue.put(combat)))
-
-    @staticmethod
-    # def _analyze_combat_helper(pool, combat):
-    #     print('_analyze_combat_helper')
-    #     pool.apply_async(analyze_combat, (combat,), callback=self.handle_analyzed_result)
 
     def _analyze_log_file_mp_(
             self, log_path: str = '', max_combats: int = -1, offset: int = 0,

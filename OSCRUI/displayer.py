@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QTableView, QVBoxLayo
 from PySide6.QtCore import Qt, Slot
 
 from .headers import get_table_headers
+from OSCR import TABLE_HEADER
 from OSCR.combat import Combat
 
 from .datamodels import OverviewTableModel, SortingProxy
@@ -69,7 +70,7 @@ def extract_overview_data(combat: Combat) -> tuple:
     DMG_graph_data = dict()
     graph_time = dict()
 
-    for player in combat.player_dict.values():
+    for player in combat.players.values():
         table.append((*player,))
 
         DPS_graph_data[player.handle] = player.DPS_graph_data
@@ -162,10 +163,10 @@ def create_horizontal_bar_graph(self, table: list[list], bar_widget: PlotWidget)
     left_axis.setTickFont(theme_font(self, 'app'))
     bar_widget.setDefaultPadding(padding=0.01)
 
-    table.sort(key=lambda line: line[3], reverse=True)
+    table.sort(key=lambda line: line[2], reverse=True)
     y_annotations = (tuple((index + 1, line[0] + line[1]) for index, line in enumerate(table)),)
     bar_widget.getAxis('left').setTicks(y_annotations)
-    x = tuple(line[3] for line in table)
+    x = tuple(line[2] for line in table)
     y = tuple(range(1, len(x) + 1))
     bar_widget.setXRange(0, max(x) * 1.05, padding=0)
     bars = BarGraphItem(
@@ -274,7 +275,7 @@ def create_overview_table(self, table_data) -> QTableView:
     table_cell_data = tuple(tuple(line[2:]) for line in table_data)
     table_index = tuple(line[0] + line[1] for line in table_data)
     model = OverviewTableModel(
-            table_cell_data, get_table_headers(), table_index, self.theme_font('table_header'),
+            table_cell_data, TABLE_HEADER, table_index, self.theme_font('table_header'),
             self.theme_font('table'))
     sort = SortingProxy()
     sort.setSourceModel(model)

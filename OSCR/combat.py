@@ -1,13 +1,13 @@
 """This file implements the Combat class"""
 
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import numpy
 
-from .datamodels import TreeModel
+from .datamodels import LogLine, OverviewTableRow, TreeItem, TreeModel
 from .detection import Detection
-from .utilities import get_entity_name, datetime_to_display
+from .utilities import get_entity_name, get_player_handle, datetime_to_display
 
 
 def check_difficulty_deaths(difficulty, data, metadata):
@@ -63,17 +63,18 @@ class Combat:
     results.
     """
 
-    def __init__(self, graph_resolution=0.2, id: int = -1):
-        self.log_data = deque()
-        self.id = id
+    def __init__(self, graph_resolution: float = 0.2, id: int = -1):
+        self.log_data: deque[LogLine] = deque()
+        self.id: int = id
         self.map = None
         self.difficulty = None
-        self.start_time = None
-        self.end_time = None
-        self.players = {}
-        self.critters = {}
-        self.critter_meta = {}
+        self.start_time: datetime = None
+        self.end_time: datetime = None
+        self.players: dict[str, OverviewTableRow] = dict()
+        self.critters: dict = dict()
+        self.critter_meta: dict = dict()
         self.graph_resolution = graph_resolution
+        self.overview_graphs: dict = dict()
         self.damage_out: TreeModel = None
         self.damage_in: TreeModel = None
         self.heals_out: TreeModel = None
@@ -97,6 +98,95 @@ class Combat:
             f'{self.map} ({self.difficulty} Difficulty) at '
             + datetime_to_display(self.start_time)
         )
+
+    def create_overview_graphs(self, player: OverviewTableRow):
+        """
+        creates overview graphs from damage graph
+        """
+        empty_at_beginning = 0
+        empty_at_end = 0
+        graph = self.overview_graphs[player.handle]
+        while True:
+            if graph[empty_at_beginning] == 0:
+                empty_at_beginning += 1
+            else:
+                break
+        while True:
+            if graph[-1 - empty_at_end] == 0:
+                empty_at_end += 1
+            else:
+                break
+        player.DMG_graph_data = dmg_graph = graph[empty_at_beginning:-empty_at_end]
+        first_graph_time = self.graph_resolution * empty_at_beginning
+        last_graph_time = (len(dmg_graph) + empty_at_beginning - 1) * self.graph_resolution
+        player.graph_time = numpy.linspace(first_graph_time, last_graph_time, len(dmg_graph))
+        combat_time_array = player.graph_time - (empty_at_beginning - 1) * self.graph_resolution
+        player.DPS_graph_data = dmg_graph.cumsum() / combat_time_array
+
+    def create_overview(self):
+        """
+        Creates overview table from analysis data and overview graphs from self.overiew_graphs and
+        creates players with that data in self.players
+        """
+        combat_duration = (self.end_time - self.start_time).total_seconds()
+        total_damage_out = 0
+        total_attacks_in = 0
+        total_damage_in = 0
+        total_heals = 0
+
+        for player_item in self.damage_out._player._children:
+            dmg_out_data = player_item.data
+            player_combat_duration = dmg_out_data[19]
+            if player_combat_duration <= 0:
+                continue
+            player_name_and_handle = dmg_out_data[0]
+            player = OverviewTableRow(*player_name_and_handle)
+            player.DPS = dmg_out_data[1]
+            player.combat_time = player_combat_duration
+            player.combat_time_share = player_combat_duration / combat_duration
+            player.total_damage = dmg_out_data[2]
+            total_damage_out += dmg_out_data[2]
+            player.debuff = dmg_out_data[3]
+            player.max_one_hit = dmg_out_data[4]
+            player.crit_chance = dmg_out_data[5]
+            player.total_attacks = dmg_out_data[9]
+            player.hull_attacks = dmg_out_data[20]
+            player.crit_num = dmg_out_data[11]
+            player.misses = dmg_out_data[10]
+            dmg_in_data = self.get_player_item(self.damage_in, player_name_and_handle)
+            if dmg_in_data is not None:
+                dmg_in_data = dmg_in_data.data
+                player.deaths = dmg_in_data[8]
+                player.total_damage_taken = dmg_in_data[2]
+                total_damage_in += dmg_in_data[2]
+                player.total_hull_damage_taken = dmg_in_data[15]
+                player.total_shield_damage_taken = dmg_in_data[13]
+                player.attacks_in_num = dmg_in_data[9]
+                total_attacks_in += dmg_in_data[9]
+            heal_out_data = self.get_player_item(self.heals_out, player_name_and_handle)
+            if heal_out_data is not None:
+                heal_out_data = heal_out_data.data
+                player.total_heals = heal_out_data[2]
+                total_heals += heal_out_data[2]
+                player.heal_crit_chance = heal_out_data[8]
+                player.heal_crit_num = heal_out_data[10]
+                player.heal_num = heal_out_data[9]
+            self.create_overview_graphs(player)
+            self.players[''.join(player_name_and_handle)] = player
+
+        for player in self.players.values():
+            player.heal_share = player.total_heals / total_heals
+            player.attacks_in_share = player.attacks_in_num / total_attacks_in
+            player.taken_damage_share = player.total_damage_taken / total_damage_in
+            player.damage_share = player.total_damage / total_damage_out
+
+    def get_player_item(self, model: TreeModel, name_and_handle: tuple) -> TreeItem | None:
+        """
+        returns the player item identified by `name_and_handle` from `model`
+        """
+        for player in model._player._children:
+            if player.data[0] == name_and_handle:
+                return player
 
     def analyze_last_line(self):
         """Analyze the last line and try and detect the map and difficulty"""
