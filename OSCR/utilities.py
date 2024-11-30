@@ -56,16 +56,14 @@ def get_handle_from_id(id_str: str) -> str:
     returns player handle from id string
     '''
     if id_str.startswith('P'):
-        handle = re_search(PLAYER_HANDLE_REGEX, id_str)
-        if handle is None:
-            return ''
-        return handle.group('handle')
-
-    handle = re_search(COMPUTER_HANDLE_REGEX, id_str)
-    if handle is None:
+        _, _, handle_part = id_str.rpartition('@')
+        return '@' + handle_part[:-1]
+    elif id_str.startswith('C'):
+        handle_part, _ = id_str.split(' ', maxsplit=1)
+        # the space enables consistent concatenation behaviour between players and NPCs
+        return f' {handle_part[2:]}'
+    else:
         return ''
-    # the space is intentional to allow for fancy concatenation of name and handle
-    return f' {handle.group("handle")}'
 
 
 def get_player_handle(id_str: str) -> str:

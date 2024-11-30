@@ -59,7 +59,11 @@ class ReadFileBackwards():
         """Closes the file. (usually done by the context manager)"""
         self.__exit__()
 
-    def get_bytes_read(self, ignore_lines: int = 0):
+    def get_bytes_read(self, ignore_last_line: bool = False):
+        """
+        Bytes read excluding offset and number of lines.
+        """
+        ignore_lines = 1 if ignore_last_line else 0
         not_consumed_bytes = self._calculate_not_consumed_bytes(ignore_lines)
         return self.filesize - self._position - not_consumed_bytes - self._offset
 

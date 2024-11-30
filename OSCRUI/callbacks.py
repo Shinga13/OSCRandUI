@@ -318,3 +318,9 @@ def repair_logfile(self):
     log_path = os.path.abspath(self.entry.text())
     dir = QTemporaryDir()
     oscr_repair_logfile(log_path, dir.path())
+
+
+def show_parser_error(self, error: BaseException):
+    """
+    """
+    print(error.args, flush=True)

@@ -61,10 +61,10 @@ def analyze_log_callback(
         self.parser.reset_parser()
         self.current_combats.clear()
         self.parser.log_path = path
-        self.parser.analyze_log_file(max_combats=1)
+        # self.parser.analyze_log_file(max_combats=1)
         # exec_in_thread(self, self.parser.analyze_log_file_mp)
-        # self.thread = Thread(target=self.parser.analyze_log_file)
-        # self.thread.start()
+        self.thread = Thread(target=self.parser.analyze_log_file, kwargs={'max_combats': 1})
+        self.thread.start()
 
         # except Exception as ex:
         #     error = QMessageBox()
@@ -158,7 +158,6 @@ def insert_combat(self, combat: Combat):
     """
     Called by parser as soon as combat has been analyzed. Inserts combat into UI.
     """
-    print(f'got combat #{combat.id}')
     self.current_combats.insertItem(combat.id, combat.description)
     if combat.id == 0:
         self.current_combats.setCurrentRow(0)
@@ -279,15 +278,10 @@ def copy_analysis_table_callback(self):
     """
     Copies the current selection of analysis table as tab-delimited table
     """
-    print('Table COPY')
     if self.widgets.main_tabber.currentIndex() != 1:
         return
     current_tab = self.widgets.analysis_tabber.currentIndex()
     current_table = self.widgets.analysis_table[current_tab]
-    if current_tab <= 1:
-        format_function = format_damage_tree_data
-    else:
-        format_function = format_heal_tree_data
     selection: list = current_table.selectedIndexes()
     if selection:
         selection.sort(key=lambda index: (index.row(), index.column()))
@@ -299,9 +293,7 @@ def copy_analysis_table_callback(self):
                 output.append(list())
             output[-1].append(cell_index.internalPointer().get_data(col))
             last_row = cell_index.row()
-        print(output)
         output_text = '\n'.join(map(lambda row: '\t'.join(map(str, row)), output))
-        print(output_text)
         self.app.clipboard().setText(output_text)
 
 
@@ -377,7 +369,7 @@ def copy_analysis_callback(self):
                 if isinstance(max_one_hit_ability, tuple):
                     max_one_hit_ability = ''.join(max_one_hit_ability)
                 output_string = (f'{{ OSCR }} {prefix}: {max_one_hit:,.2f} '
-                                 f'(`{"".join(selected_row.get_data(0))}` – '
+                                 f'(`{"".join(selected_row.get_data(0)[0:2])}` – '
                                  f'{max_one_hit_ability})')
                 self.app.clipboard().setText(output_string)
     elif copy_mode == self._('Magnitude'):
@@ -393,7 +385,7 @@ def copy_analysis_callback(self):
         for player_item in current_table.model()._player._children:
             magnitudes.append((player_item.get_data(2), ''.join(player_item.get_data(0))))
         magnitudes.sort(key=lambda x: x[0], reverse=True)
-        magnitudes = [f"`[{''.join(player)}]` {magnitude:,.2f}" for magnitude, player in magnitudes]
+        magnitudes = [f"`[{player}]` {magnitude:,.2f}" for magnitude, player in magnitudes]
         output_string = (f'{{ OSCR }} {prefix}: {" | ".join(magnitudes)}')
         self.app.clipboard().setText(output_string)
     elif copy_mode == self._('Magnitude / s'):
@@ -409,6 +401,6 @@ def copy_analysis_callback(self):
         for player_item in current_table.model()._player._children:
             magnitudes.append((player_item.get_data(1), ''.join(player_item.get_data(0))))
         magnitudes.sort(key=lambda x: x[0], reverse=True)
-        magnitudes = [f"`[{''.join(player)}]` {magnitude:,.2f}" for magnitude, player in magnitudes]
+        magnitudes = [f"`[{player}]` {magnitude:,.2f}" for magnitude, player in magnitudes]
         output_string = (f'{{ OSCR }} {prefix}: {" | ".join(magnitudes)}')
         self.app.clipboard().setText(output_string)

@@ -1,8 +1,8 @@
-from datetime import timedelta
 import numpy
 import time
+from datetime import datetime
 
-from . import TREE_HEADER, HEAL_TREE_HEADER
+from .constants import TREE_HEADER, HEAL_TREE_HEADER
 from .datamodels import (
     AnalysisTableRow, DamageTableRow, HealTableRow, LogLine, OverviewTableRow, TreeItem, TreeModel)
 from .combat import Combat
@@ -13,22 +13,18 @@ def analyze_combat(combat: Combat, settings: dict = {}) -> Combat:
     """
     Fully analyzes the given combat and returns it.
     """
-    print('    analyzation actually started', combat.id, time.time())
-    dmg_out_model = TreeModel(TREE_HEADER)
-    dmg_in_model = TreeModel(TREE_HEADER)
-    heal_out_model = TreeModel(HEAL_TREE_HEADER)
-    heal_in_model = TreeModel(HEAL_TREE_HEADER)
-    actor_combat_durations = dict()
+    combat.damage_out = dmg_out_model = TreeModel(TREE_HEADER)
+    combat.damage_in = dmg_in_model = TreeModel(TREE_HEADER)
+    combat.heals_out = heal_out_model = TreeModel(HEAL_TREE_HEADER)
+    combat.heals_in = heal_in_model = TreeModel(HEAL_TREE_HEADER)
+    actor_combat_durations: dict[str, list[datetime]] = dict()
     graph_point_delta = combat.graph_resolution * 1_000_000
-    combat_duration_delta = combat.log_data[-1].timestamp - combat.log_data[0].timestamp
-    cd2 = combat.end_time - combat.start_time
-    assert combat_duration_delta.total_seconds() == cd2.total_seconds()
+    combat_duration_delta = combat.end_time - combat.start_time
     combat_duration_sec = int(combat_duration_delta.total_seconds()) + 1  # round up to full second
     total_graph_points = int(combat_duration_delta.total_seconds() // combat.graph_resolution + 1)
     combat_start = combat.log_data[0].timestamp
     relative_combat_sec = 0
     for line in combat.log_data:
-
         timestamp = line.timestamp
         player_attacks = line.owner_id.startswith('P')
         player_attacked = line.target_id.startswith('P')
@@ -133,17 +129,6 @@ def analyze_combat(combat: Combat, settings: dict = {}) -> Combat:
                             total_graph_points, numpy.float64)
                     combat.overview_graphs[get_player_handle(line.owner_id)][time_idx] += magnitude
 
-            # update overview graph
-            # if timestamp - last_graph_time >= graph_point_delta:
-            #     current_graph_timedelta = (timestamp - last_graph_time).total_seconds()
-            #     graph_points += current_graph_timedelta // graph_point_delta.total_seconds()
-            #     for player in combat.players.values():
-            #         if player.damage_buffer != 0:
-            #             player.DMG_graph_data.append(player.damage_buffer)
-            #             player.damage_buffer = 0.0
-            #             player.graph_time.append(graph_points * combat.graph_resolution)
-            #     last_graph_time = timestamp
-
             if miss_flag:
                 ability_target.misses += 1
                 source_ability.misses += 1
@@ -156,13 +141,19 @@ def analyze_combat(combat: Combat, settings: dict = {}) -> Combat:
             if kill_flag:
                 ability_target.kills += 1
                 source_ability.kills += 1
-                if ((combat.map == 'Hive Space' and ability_target.name == 'Borg Queen Octahedron')
-                        or (ability_target.name == '*'
+                if (ability_target.name == 'Borg Queen Octahedron'
+                        or ((line.source_id == '*' or line.owner_id == '*')
                             and line.owner_name == 'Borg Queen Octahedron')):
-                    combat_duration_delta = line.timestamp - combat.log_data[0].timestamp
-                    break  # ignore all lines after the Queen kill line in the Hive Space queue
+                    if combat.map_is_hive_space():
+                        combat_duration_delta = line.timestamp - combat.log_data[0].timestamp
+                        break  # ignore all lines after the Queen kill line in the Hive Space queue
 
+    overview_graph_intervals: dict[str, tuple] = dict()
     for actor_id, (start_time, end_time) in actor_combat_durations.items():
+        if actor_id.startswith('P'):
+            start = int((start_time - combat.start_time).total_seconds() // combat.graph_resolution)
+            end = int((end_time - combat.start_time).total_seconds() // combat.graph_resolution + 1)
+            overview_graph_intervals[get_player_handle(actor_id)] = (start, end)
         actor_combat_durations[actor_id] = round((end_time - start_time).total_seconds(), 1)
 
     merge_single_lines(dmg_out_model)
@@ -171,12 +162,8 @@ def analyze_combat(combat: Combat, settings: dict = {}) -> Combat:
     complete_damage_tree(dmg_in_model, actor_combat_durations, combat_duration)
     complete_heal_tree(heal_out_model, actor_combat_durations, combat_duration)
     complete_heal_tree(heal_in_model, actor_combat_durations, combat_duration)
-    combat.damage_out = dmg_out_model
-    combat.damage_in = dmg_in_model
-    combat.heals_out = heal_out_model
-    combat.heals_in = heal_in_model
-    combat.create_overview()
-    print(f'#### Analyzation finished: {combat.id} {time.time()}')
+    combat.detect_map()
+    combat.create_overview(overview_graph_intervals)
     return combat
 
 
@@ -357,7 +344,7 @@ def calculate_heal_row_stats(row: HealTableRow, combat_time: float) -> tuple:
     - :param raw_row_data: contains the raw data of a row
     - :param combat_time: combat time of the parent entity in seconds
 
-    :return: complete row data according to HEAL_TREE_HEADER (see __init__.py), plus a tuple
+    :return: complete row data according to HEAL_TREE_HEADER (see constants.py), plus a tuple
     containing name and handle as first element -> ((name, handle), HPS, Total Heal, ...)
     '''
     try:
@@ -393,7 +380,7 @@ def combine_children_damage_stats(item: TreeItem) -> tuple:
     if isinstance(item.data, (str, tuple)):
         result_data[0] = item.data
     else:
-        result_data[0] = (item.data.name, item.data.handle)
+        result_data[0] = (item.data.name, item.data.handle, item.data.id[0])
     for index in (2, 8, 9, 10, 11, 12, 13, 15, 17, 20, 21):
         result_data[index] = sum(children_data[index])
     result_data[4] = max(children_data[4])  # max_one_hit
@@ -411,7 +398,7 @@ def combine_children_damage_stats(item: TreeItem) -> tuple:
         result_data[3] = (result_data[2] / result_data[17]) - 1  # debuff
     except ZeroDivisionError:
         result_data[3] = 0.0
-    successful_attacks = result_data[9] - result_data[10]
+    successful_attacks = result_data[20] - result_data[10]
     try:
         result_data[5] = result_data[11] / successful_attacks  # crit_chance
         result_data[6] = successful_attacks / result_data[20]  # accuracy

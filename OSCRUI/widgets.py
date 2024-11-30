@@ -457,3 +457,4 @@ def exec_in_thread(
 
 class ParserSignals(QObject):
     analyzed_combat = Signal(object)
+    parser_error = Signal(object)

@@ -1,4 +1,3 @@
-from typing import Iterable
 from collections import namedtuple
 
 import numpy
@@ -21,6 +20,26 @@ LogLine = namedtuple(
         'magnitude2'
     )
 )
+
+
+class CritterMeta:
+    """
+    Represents one npc type in a combat.
+    """
+
+    __slots__ = ('name', 'count', 'hull_values')
+
+    def __init__(self, name: str, initial_count: int = 0, initial_hull_values: list = []):
+        self.name = name
+        self.count = initial_count
+        self.hull_values = initial_hull_values
+
+    def add_critter(self, hull_value: int):
+        self.count += 1
+        self.hull_values.append(hull_value)
+
+    def __repr__(self):
+        return f'<CritterMeta "{self.name}">'
 
 
 class OverviewTableRow:
@@ -245,7 +264,7 @@ class TreeModel():
 
     def __init__(self, header: tuple[str]):
         self.actor_index = dict()
-        self.ability_index = dict()
+        self.ability_index: dict[tuple, dict[str, TreeItem]] = dict()
         self.pet_group_index = dict()
         self.pet_index = dict()
         self.target_index = dict()

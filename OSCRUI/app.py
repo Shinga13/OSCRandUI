@@ -32,8 +32,8 @@ class OSCRUI():
             browse_log, browse_sto_logpath, collapse_overview_table, expand_overview_table,
             favorite_button_callback, navigate_log, save_combat, set_live_scale_setting,
             set_parser_opacity_setting, set_graph_resolution_setting, set_sto_logpath_setting,
-            set_ui_scale_setting, switch_analysis_tab, switch_main_tab, switch_map_tab,
-            switch_overview_tab)
+            set_ui_scale_setting, show_parser_error, switch_analysis_tab, switch_main_tab,
+            switch_map_tab, switch_overview_tab)
     from .datafunctions import (
             analyze_log_callback, copy_analysis_callback, copy_analysis_table_callback,
             copy_summary_callback, insert_combat, update_shown_columns_dmg,
@@ -100,8 +100,7 @@ class OSCRUI():
         if self.settings.value('auto_scan', type=bool):
             QTimer.singleShot(
                     100,
-                    lambda: self.analyze_log_callback(self.translate, path=self.entry.text())
-            )
+                    lambda: self.analyze_log_callback(self.translate, path=self.entry.text()))
 
     def translate(self, text):
         """Translate text."""
@@ -192,7 +191,9 @@ class OSCRUI():
         self.parser = OSCR(settings=self.parser_settings)
         self.parser_signals = ParserSignals()
         self.parser_signals.analyzed_combat.connect(self.insert_combat)
+        self.parser_signals.parser_error.connect(self.show_parser_error)
         self.parser.combat_analyzed_callback = lambda c: self.parser_signals.analyzed_combat.emit(c)
+        self.parser.error_callback = lambda e: self.parser_signals.parser_error.emit(e)
 
     @property
     def parser_settings(self) -> dict:
@@ -902,7 +903,7 @@ class OSCRUI():
             return
         name = item.data[0]
         if isinstance(name, tuple):
-            name = ''.join(name)
+            name = name[0] + name[1]
         legend_item = self.create_legend_item(color, name)
         plot_widget.add_legend_item(legend_item)
 

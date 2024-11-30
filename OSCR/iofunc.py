@@ -5,13 +5,9 @@ import os
 from re import sub as re_sub
 import shutil
 from time import time
-from typing import Callable
 
 from .utilities import to_datetime, logline_to_str
 
-
-def _f(*args, **kwargs):
-    return
 
 def format_timestamp(timestamp: str) -> str:
     '''
@@ -40,24 +36,6 @@ def get_lines(log_path: str) -> list:
             lines_list = file.readlines()
 
     return lines_list
-
-
-# def read_logfile(
-#         log_path: str, max_combats: int = 1, line_handler: Callable = _f,
-#         offset: int = 0) -> tuple[list, int]:
-#     """
-#     Reads logfile at path, splits it into combats and starts analyzation of combats.
-
-#     Parameters:
-#     - :param log_path: absolute path to logfile
-#     - :param max_combats: maximum number of combats to read
-#     - :param line_handler: function to be called on each identified combat
-#     - :param offset: starts analyzing the file at offset
-#     :return:
-#     """
-#     if not (os.path.exists(log_path) and os.path.isfile(log_path)):
-#         raise FileNotFoundError(f'Invalid Path: {log_path}')
-    
 
 
 def get_combat_log_data(log_path: str):
@@ -236,6 +214,26 @@ def save_log(path: str, lines: list, overwrite: bool = False):
             file.write(line)
 
 
+def extract_bytes(source_path: str, target_path: str, start_pos: int, end_pos: int):
+    """
+    Extracts combat from file at `source_path` by copying bytes from `start_pos` (including) up to
+    `end_pos` (not including) to a new file at `target_path`
+
+    Parameters:
+    - :param source_path: path to source file, must be absolute
+    - :param source_path: path to target_file, must be absolute, will overwrite if it already exists
+    - :param start_pos: first byte from source file to copy
+    - :param end_pos: copies data until this byte, not including it
+    """
+    if not os.path.isabs(source_path):
+        raise AttributeError(f'source_path is not absolute: {source_path}')
+    if not os.path.isabs(target_path):
+        raise AttributeError(f'target_path is not absolute: {target_path}')
+    with open(source_path, 'rb') as source_file, open(target_path, 'wb') as target_file:
+        source_file.seek(start_pos)
+        target_file.write(source_file.read(end_pos - start_pos))
+
+
 def repair_logfile(path: str, templog_folder_path: str):
     """
     Replace bugged combatlog lines
@@ -247,14 +245,13 @@ def repair_logfile(path: str, templog_folder_path: str):
     if not os.path.exists(path):
         raise FileNotFoundError(f"Path to logfile doesn't exist: {path}")
     tempfile_path = f'{templog_folder_path}\\{int(time())}'
-    with open(path, 'rb') as log_file:
-        with open(tempfile_path, 'wb') as temp_file:
-            for line in log_file:
-                for broken_string, fixed_string in patches:
-                    if broken_string in line:
-                        temp_file.write(line.replace(broken_string, fixed_string))
-                    else:
-                        temp_file.write(line)
+    with open(path, 'rb') as log_file, open(tempfile_path, 'wb') as temp_file:
+        for line in log_file:
+            for broken_string, fixed_string in patches:
+                if broken_string in line:
+                    temp_file.write(line.replace(broken_string, fixed_string))
+                else:
+                    temp_file.write(line)
     shutil.copyfile(tempfile_path, path)
 
 
