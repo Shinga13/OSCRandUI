@@ -7,11 +7,11 @@ from OSCR import (
     LIVE_TABLE_HEADER, OSCR, repair_logfile as oscr_repair_logfile, split_log_by_combat,
     split_log_by_lines)
 
-from .iofunctions import browse_path
+from .iofunctions import browse_path, open_link
 from .textedit import format_path
 
 
-def browse_log(self, entry: QLineEdit, translate):
+def browse_log(self, entry: QLineEdit):
     """
     Callback for browse button.
 
@@ -25,7 +25,7 @@ def browse_log(self, entry: QLineEdit, translate):
     if path != '':
         entry.setText(format_path(path))
         if self.settings.value('auto_scan', type=bool):
-            self.analyze_log_callback(translate, path=path, parser_num=1)
+            self.analyze_log_callback(path=path, parser_num=1)
 
 
 def save_combat(self, combat_num: int):

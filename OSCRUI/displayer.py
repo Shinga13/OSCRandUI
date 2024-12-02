@@ -5,7 +5,6 @@ from pyqtgraph import BarGraphItem, mkPen, PlotWidget, setConfigOptions
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QTableView, QVBoxLayout, QWidget
 from PySide6.QtCore import Qt, Slot
 
-from .headers import get_table_headers
 from OSCR import TABLE_HEADER
 from OSCR.combat import Combat
 

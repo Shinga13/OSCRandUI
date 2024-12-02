@@ -1,18 +1,16 @@
 import os
 from threading import Thread
 
-from OSCR import OSCR
+from OSCR import HEAL_TREE_HEADER, TREE_HEADER
 from OSCR.combat import Combat
 from PySide6.QtCore import Qt, QThread, Signal, Slot
-from PySide6.QtWidgets import QMessageBox
 
-from .callbacks import switch_main_tab, switch_overview_tab, trim_logfile
+from .callbacks import switch_main_tab, switch_overview_tab
 from .datamodels import DamageTreeModel, HealTreeModel, TreeSelectionModel
 from .displayer import create_overview
-from .headers import get_heal_tree_headers, get_tree_headers
-from .subwindows import log_size_warning, show_warning, split_dialog
+from .subwindows import show_warning
 from .textedit import format_damage_number, format_damage_tree_data, format_heal_tree_data
-from .widgets import exec_in_thread
+from .translation import tr
 
 
 class CustomThread(QThread):
@@ -31,8 +29,7 @@ class CustomThread(QThread):
 
 
 @Slot()
-def analyze_log_callback(
-        self, translate, combat_id=None, path=None, hidden_path=False):
+def analyze_log_callback(self, combat_id=None, path=None, hidden_path=False):
     """
     Wrapper function for retrieving and showing data. Callback of "Analyze" button.
 
@@ -45,15 +42,12 @@ def analyze_log_callback(
     if combat_id == -1 or combat_id == self.current_combat_id:
         return
 
-    if self._ is None:
-        self._ = translate
-
     # initial run / click on the Analyze button
     if combat_id is None:
         if path == '' or not os.path.isfile(path):
             show_warning(
-                    self, self._('Invalid Logfile'),
-                    self._('The Logfile you are trying to open does not exist.'))
+                    self, tr('Invalid Logfile'),
+                    tr('The Logfile you are trying to open does not exist.'))
             return
         if not hidden_path and path != self.settings.value('log_path'):
             self.settings.setValue('log_path', path)
@@ -73,22 +67,22 @@ def analyze_log_callback(
         #         print(ex)
         #         error_message = str(ex)[:60]
         #         message = (
-        #             f"{self._('Failed to analyze the log file.')}\n\n"
-        #             f"{self._('Reason:')}\n{error_message}\n\n"
-        #             f"{self._('Please report this issue to Discord OSCR-Support channel.')}"
+        #             f"{tr('Failed to analyze the log file.')}\n\n"
+        #             f"{tr('Reason:')}\n{error_message}\n\n"
+        #             f"{tr('Please report this issue to Discord OSCR-Support channel.')}"
         #         )
         #         error.setText(message)
         #     except Exception as ex:
         #         print(ex)
         #         error_message = str(ex)[:60]
         #         message = (
-        #             f"{self._('Failed to analyze the log file.')}\n\n"
-        #             f"{self._('Reason:')}\n{error_message}\n\n"
-        #             f"{self._('Please report this issue to Discord OSCR-Support channel.')}"
+        #             f"{tr('Failed to analyze the log file.')}\n\n"
+        #             f"{tr('Reason:')}\n{error_message}\n\n"
+        #             f"{tr('Please report this issue to Discord OSCR-Support channel.')}"
         #         )
         #         error.setText(message)
 
-        #     error.setWindowTitle(self._("Open Source Combatlog Reader"))
+        #     error.setWindowTitle(tr("Open Source Combatlog Reader"))
         #     error.setIcon(QMessageBox.Critical)
         #     error.exec()
         # self.current_combats.addItems(self.parser.analyzed_combats)
@@ -116,7 +110,7 @@ def analyze_log_callback(
     switch_overview_tab(self, self.settings.value('first_overview_tab', type=int))
 
 
-def copy_summary_callback(self, translate):
+def copy_summary_callback(self):
     """
     Callback to set the combat summary of the active combat to the user's clippboard
 
@@ -126,9 +120,6 @@ def copy_summary_callback(self, translate):
 
     if not self.parser.active_combat:
         return
-
-    if self._ is None:
-        self._ = translate
 
     duration = self.parser.active_combat.duration.total_seconds()
     combat_time = f'{int(duration / 60):02}:{duration % 60:02.0f}'
@@ -187,7 +178,7 @@ def populate_analysis(self, combat: Combat):
     damage_out_table = self.widgets.analysis_table_dout
     damage_out_model = DamageTreeModel(
             damage_out_item, self.theme_font('tree_table_header'), self.theme_font('tree_table'),
-            self.theme_font('', self.theme['tree_table']['::item']['font']), get_tree_headers())
+            self.theme_font('', self.theme['tree_table']['::item']['font']), tr(TREE_HEADER))
     damage_out_table.setModel(damage_out_model)
     damage_out_root_index = damage_out_model.createIndex(0, 0, damage_out_model._root)
     damage_out_table.expand(damage_out_model.index(0, 0, damage_out_root_index))
@@ -197,7 +188,7 @@ def populate_analysis(self, combat: Combat):
     damage_in_table = self.widgets.analysis_table_dtaken
     damage_in_model = DamageTreeModel(
             damage_in_item, self.theme_font('tree_table_header'), self.theme_font('tree_table'),
-            self.theme_font('', self.theme['tree_table']['::item']['font']), get_tree_headers())
+            self.theme_font('', self.theme['tree_table']['::item']['font']), tr(TREE_HEADER))
     damage_in_table.setModel(damage_in_model)
     damage_in_root_index = damage_in_model.createIndex(0, 0, damage_in_model._root)
     damage_in_table.expand(damage_in_model.index(0, 0, damage_in_root_index))
@@ -208,7 +199,7 @@ def populate_analysis(self, combat: Combat):
     heal_out_model = HealTreeModel(
             heal_out_item, self.theme_font('tree_table_header'), self.theme_font('tree_table'),
             self.theme_font('', self.theme['tree_table']['::item']['font']),
-            get_heal_tree_headers())
+            tr(HEAL_TREE_HEADER))
     heal_out_table.setModel(heal_out_model)
     heal_out_root_index = damage_in_model.createIndex(0, 0, heal_out_model._root)
     heal_out_table.expand(heal_out_model.index(0, 0, heal_out_root_index))
@@ -219,7 +210,7 @@ def populate_analysis(self, combat: Combat):
     heal_in_model = HealTreeModel(
             heal_in_item, self.theme_font('tree_table_header'), self.theme_font('tree_table'),
             self.theme_font('', self.theme['tree_table']['::item']['font']),
-            get_heal_tree_headers())
+            tr(HEAL_TREE_HEADER))
     heal_in_table.setModel(heal_in_model)
     heal_in_root_index = damage_in_model.createIndex(0, 0, heal_in_model._root)
     heal_in_table.expand(heal_in_model.index(0, 0, heal_in_root_index))
@@ -304,12 +295,12 @@ def copy_analysis_callback(self):
     current_tab = self.widgets.analysis_tabber.currentIndex()
     current_table = self.widgets.analysis_table[current_tab]
     copy_mode = self.widgets.analysis_copy_combobox.currentText()
-    if copy_mode == self._('Selection'):
+    if copy_mode == tr('Selection'):
         if current_tab <= 1:
-            current_header = get_tree_headers()
+            current_header = tr(HEAL_TREE_HEADER)
             format_function = format_damage_tree_data
         else:
-            current_header = get_heal_tree_headers()
+            current_header = tr(HEAL_TREE_HEADER)
             format_function = format_heal_tree_data
         selection = current_table.selectedIndexes()
         if selection:
@@ -331,13 +322,13 @@ def copy_analysis_callback(self):
                 output.append(f"`{formatted_row_name}`: {' | '.join(formatted_row)}")
             output_string = '\n'.join(output)
             self.app.clipboard().setText(output_string)
-    elif copy_mode == self._('Global Max One Hit'):
+    elif copy_mode == tr('Global Max One Hit'):
         if current_tab <= 1:
             max_one_hit_col = 4
-            prefix = self._('Max One Hit')
+            prefix = tr('Max One Hit')
         else:
             max_one_hit_col = 7
-            prefix = self._('Max One Heal')
+            prefix = tr('Max One Heal')
         max_one_hits = []
         for player_item in current_table.model()._player._children:
             max_one_hits.append((player_item.get_data(max_one_hit_col), player_item))
@@ -351,13 +342,13 @@ def copy_analysis_callback(self):
                          f'(`{"".join(max_one_hit_item.get_data(0))}` – '
                          f'{max_one_hit_ability})')
         self.app.clipboard().setText(output_string)
-    elif copy_mode == self._('Max One Hit'):
+    elif copy_mode == tr('Max One Hit'):
         if current_tab <= 1:
             max_one_hit_col = 4
-            prefix = self._('Max One Hit')
+            prefix = tr('Max One Hit')
         else:
             max_one_hit_col = 7
-            prefix = self._('Max One Heal')
+            prefix = tr('Max One Heal')
         selection = current_table.selectedIndexes()
         if selection:
             selected_row = selection[0].internalPointer()
@@ -372,15 +363,15 @@ def copy_analysis_callback(self):
                                  f'(`{"".join(selected_row.get_data(0)[0:2])}` – '
                                  f'{max_one_hit_ability})')
                 self.app.clipboard().setText(output_string)
-    elif copy_mode == self._('Magnitude'):
+    elif copy_mode == tr('Magnitude'):
         if current_tab == 0:
-            prefix = self._('Total Damage Out')
+            prefix = tr('Total Damage Out')
         elif current_tab == 1:
-            prefix = self._('Total Damage Taken')
+            prefix = tr('Total Damage Taken')
         elif current_tab == 2:
-            prefix = self._('Total Heal Out')
+            prefix = tr('Total Heal Out')
         else:
-            prefix = self._('Total Heal In')
+            prefix = tr('Total Heal In')
         magnitudes = list()
         for player_item in current_table.model()._player._children:
             magnitudes.append((player_item.get_data(2), ''.join(player_item.get_data(0))))
@@ -388,15 +379,15 @@ def copy_analysis_callback(self):
         magnitudes = [f"`[{player}]` {magnitude:,.2f}" for magnitude, player in magnitudes]
         output_string = (f'{{ OSCR }} {prefix}: {" | ".join(magnitudes)}')
         self.app.clipboard().setText(output_string)
-    elif copy_mode == self._('Magnitude / s'):
+    elif copy_mode == tr('Magnitude / s'):
         if current_tab == 0:
-            prefix = self._('Total DPS Out')
+            prefix = tr('Total DPS Out')
         elif current_tab == 1:
-            prefix = self._('Total DPS Taken')
+            prefix = tr('Total DPS Taken')
         elif current_tab == 2:
-            prefix = self._('Total HPS Out')
+            prefix = tr('Total HPS Out')
         else:
-            prefix = self._('Total HPS In')
+            prefix = tr('Total HPS In')
         magnitudes = list()
         for player_item in current_table.model()._player._children:
             magnitudes.append((player_item.get_data(1), ''.join(player_item.get_data(0))))
