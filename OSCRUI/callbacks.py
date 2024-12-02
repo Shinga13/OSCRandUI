@@ -57,6 +57,8 @@ def navigate_log(self, direction: str):
     Parameters:
     - :param direction: "up" -> load newer combats; "down" -> load older combats
     """
+    print('navigate_log')
+    return
     logfile_changed = self.parser.navigate_log(direction)
     selected_row = self.current_combats.currentRow()
     self.current_combats.clear()

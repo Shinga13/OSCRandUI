@@ -6,7 +6,7 @@ from OSCRUI import OSCRUI
 
 class Launcher():
 
-    version = '2024.12.02.1'
+    version = '2024.12.02.2'
     __version__ = '0.4'
 
     # holds the style of the app

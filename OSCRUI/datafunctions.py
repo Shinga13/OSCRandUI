@@ -29,85 +29,43 @@ class CustomThread(QThread):
 
 
 @Slot()
-def analyze_log_callback(self, combat_id=None, path=None, hidden_path=False):
+def analyze_log_callback(self, path=None, hidden_path=False):
     """
-    Wrapper function for retrieving and showing data. Callback of "Analyze" button.
+    Callback of "Analyze" button.
 
     Parameters:
-    - :param combat_id: id of older combat (0 -> latest combat in the file;
-    len(...) - 1 -> oldest combat)
     - :param path: path to combat log file
     - :param hidden_path: True when settings should not be updated with log path
     """
-    if combat_id == -1 or combat_id == self.current_combat_id:
+    if path == '' or not os.path.isfile(path):
+        show_warning(
+                self, tr('Invalid Logfile'),
+                tr('The Logfile you are trying to open does not exist.'))
         return
 
-    # initial run / click on the Analyze button
-    if combat_id is None:
-        if path == '' or not os.path.isfile(path):
-            show_warning(
-                    self, tr('Invalid Logfile'),
-                    tr('The Logfile you are trying to open does not exist.'))
-            return
-        if not hidden_path and path != self.settings.value('log_path'):
-            self.settings.setValue('log_path', path)
+    if not hidden_path and path != self.settings.value('log_path'):
+        self.settings.setValue('log_path', path)
 
-        self.parser.reset_parser()
-        self.current_combats.clear()
-        self.parser.log_path = path
-        # self.parser.analyze_log_file(max_combats=1)
-        # exec_in_thread(self, self.parser.analyze_log_file_mp)
-        self.thread = Thread(target=self.parser.analyze_log_file, kwargs={'max_combats': 1})
-        self.thread.start()
-
-        # except Exception as ex:
-        #     error = QMessageBox()
-        #     error.setWindowTitle("Open Source Combatlog Reader")
-        #     try:
-        #         print(ex)
-        #         error_message = str(ex)[:60]
-        #         message = (
-        #             f"{tr('Failed to analyze the log file.')}\n\n"
-        #             f"{tr('Reason:')}\n{error_message}\n\n"
-        #             f"{tr('Please report this issue to Discord OSCR-Support channel.')}"
-        #         )
-        #         error.setText(message)
-        #     except Exception as ex:
-        #         print(ex)
-        #         error_message = str(ex)[:60]
-        #         message = (
-        #             f"{tr('Failed to analyze the log file.')}\n\n"
-        #             f"{tr('Reason:')}\n{error_message}\n\n"
-        #             f"{tr('Please report this issue to Discord OSCR-Support channel.')}"
-        #         )
-        #         error.setText(message)
-
-        #     error.setWindowTitle(tr("Open Source Combatlog Reader"))
-        #     error.setIcon(QMessageBox.Critical)
-        #     error.exec()
-        # self.current_combats.addItems(self.parser.analyzed_combats)
-        # self.current_combats.setCurrentRow(0)
-        # self.current_combat_id = 0
-        # self.current_combat_path = path
-        # self.widgets.navigate_up_button.setEnabled(self.parser.navigation_up)
-        # self.widgets.navigate_down_button.setEnabled(self.parser.navigation_down)
-
-        # analysis_thread = CustomThread(self.window, lambda: self.parser.full_combat_analysis(0))
-        # analysis_thread.result.connect(lambda result: analysis_data_slot(self, result))
-        # analysis_thread.start(QThread.Priority.IdlePriority)
-
-    # subsequent run / click on older combat
-    elif isinstance(combat_id, int):
-        return
-        self.current_combat_id = combat_id
-        analysis_thread = CustomThread(
-                self.window, lambda: self.parser.full_combat_analysis(combat_id))
-        analysis_thread.result.connect(lambda result: analysis_data_slot(self, result))
-        analysis_thread.start(QThread.Priority.IdlePriority)
+    self.parser.reset_parser()
+    self.current_combats.clear()
+    self.parser.log_path = path
+    self.thread = Thread(target=self.parser.analyze_log_file, kwargs={'max_combats': 1})
+    self.thread.start()
 
     # reset tabber
     switch_main_tab(self, 0)
     switch_overview_tab(self, self.settings.value('first_overview_tab', type=int))
+
+
+def analyze_log_background(self, amount: int):
+    """
+    """
+    print(amount)
+    if self.parser.bytes_consumed > 0:
+        self.thread = Thread(target=self.parser.analyze_log_file_mp, kwargs={'max_combats': amount})
+        self.thread.start()
+    else:
+        print('log consumed')
 
 
 def copy_summary_callback(self):
@@ -149,24 +107,25 @@ def insert_combat(self, combat: Combat):
     """
     Called by parser as soon as combat has been analyzed. Inserts combat into UI.
     """
+    print(combat.id, self.current_combats.count(), combat.description)
     self.current_combats.insertItem(combat.id, combat.description)
     if combat.id == 0:
         self.current_combats.setCurrentRow(0)
         create_overview(self, combat)
         populate_analysis(self, combat)
-        self.widgets.main_menu_buttons[1].setDisabled(False)
+        analyze_log_background(self, self.settings.value('combats_to_parse', type=int) - 1)
 
 
-def analysis_data_slot(self, combat: Combat):
+def analysis_data_slot(self, index: int):
     """
-    Inserts the data retrieved from the parser into the respective tables
+    Shows analyzed combat
 
     Parameters:
-    - :param item_tuple: tuple containing only the root item of the data model
+    - :param index: index of the combat in the parsers combat list
     """
+    combat = self.parser.combats[index]
     create_overview(self, combat)
     populate_analysis(self, combat)
-    self.widgets.main_menu_buttons[1].setDisabled(False)
 
 
 def populate_analysis(self, combat: Combat):

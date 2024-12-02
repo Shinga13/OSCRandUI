@@ -30,9 +30,9 @@ class OSCRUI():
             set_ui_scale_setting, show_parser_error, switch_analysis_tab, switch_main_tab,
             switch_map_tab, switch_overview_tab)
     from .datafunctions import (
-            analyze_log_callback, copy_analysis_callback, copy_analysis_table_callback,
-            copy_summary_callback, insert_combat, update_shown_columns_dmg,
-            update_shown_columns_heal)
+            analysis_data_slot, analyze_log_background, analyze_log_callback,
+            copy_analysis_callback, copy_analysis_table_callback, copy_summary_callback,
+            insert_combat, update_shown_columns_dmg, update_shown_columns_heal)
     from .displayer import create_legend_item
     from .iofunctions import browse_path
     from .style import get_style_class, create_style_sheet, theme_font, get_style
@@ -518,7 +518,8 @@ class OSCRUI():
         self.widgets.navigate_up_button = up_button
         down_button = self.create_icon_button(
                 self.icons['page-down'], tr('Load older Combats'), parent=frame)
-        down_button.setEnabled(False)
+        down_button.clicked.connect(lambda: self.analyze_log_background(
+                self.settings.value('combats_to_parse', type=int)))
         navigation_button_layout.addWidget(down_button)
         self.widgets.navigate_down_button = down_button
         top_button_row.addLayout(navigation_button_layout)
@@ -548,15 +549,13 @@ class OSCRUI():
         self.current_combats.setFont(self.theme_font('listbox'))
         self.current_combats.setSizePolicy(SMIXMIN)
         self.current_combats.doubleClicked.connect(
-            lambda: self.analyze_log_callback(self.current_combats.currentRow()))
+            lambda: self.analysis_data_slot(self.current_combats.currentRow()))
         background_layout.addWidget(self.current_combats)
         left_layout.addWidget(background_frame, stretch=1)
 
         parser1_button.clicked.connect(
-                lambda: self.analyze_log_callback(self.current_combats.currentRow()))
+                lambda: self.analysis_data_slot(self.current_combats.currentRow()))
         export_button.clicked.connect(lambda: self.save_combat(self.current_combats.currentRow()))
-        up_button.clicked.connect(lambda: self.navigate_log('up'))
-        down_button.clicked.connect(lambda: self.navigate_log('down'))
 
         parser2_button.setEnabled(False)
         save_button.setEnabled(False)

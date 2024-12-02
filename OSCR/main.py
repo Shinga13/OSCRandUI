@@ -33,7 +33,7 @@ def raise_error(error: BaseException):
 
 
 class OSCR:
-    version = "2024.10.13.1"
+    version = "2024.12.02.1"
 
     def __init__(self, log_path: str = '', settings: dict = None):
         self.log_path = log_path
@@ -230,7 +230,7 @@ class OSCR:
         - :param result_handler: Called once for each analyzed combat as soon as the combats
         analyzation is complete
         """
-
+        print('analyze MP')
         if log_path != '':
             self.log_path = log_path
         elif self.log_path == '':
@@ -253,6 +253,7 @@ class OSCR:
         args = (self._queue, self.log_path, total_combats, next_combat_id, offset, self._settings)
         logfile_process = Process(target=OSCR._analyze_file_helper, args=args)
         logfile_process.start()
+        combats_isolated_num = 0
         while True:
             try:
                 data = self._queue.get(timeout=15)
@@ -260,13 +261,15 @@ class OSCR:
                 break
             if isinstance(data, int):
                 self.bytes_consumed = data
-                self.combats = [combat for combat in self.combats if combat is not None]
+                for _ in range(max_combats - combats_isolated_num):
+                    self.combats.pop()
                 break
             if isinstance(data, BaseException):
                 self._pool.terminate()
                 self.error_callback(data)
                 break
             else:
+                combats_isolated_num += 1
                 self._pool.apply_async(
                         analyze_combat, args=(data,), callback=self.handle_analyzed_result)
         self._pool.close()
